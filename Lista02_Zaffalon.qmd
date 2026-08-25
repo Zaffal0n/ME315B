@@ -1,0 +1,165 @@
+---
+title: "ME315 - Laboratório 02: Hands-On SQLite (ORDER BY)"
+author: "João Augusto Zaffalon"
+format:
+  pdf:
+    toc: false
+    number-sections: false
+    colorlinks: true
+execute:
+  echo: true
+  warning: false
+---
+
+```{r setup, include=FALSE}
+library(DBI)
+library(RSQLite)
+
+con <- dbConnect(RSQLite::SQLite(), ":memory:")
+
+dbExecute(con, "
+CREATE TABLE PRESERVE
+(PNO   INTEGER          NOT NULL UNIQUE,
+ PNAME VARCHAR (25)     NOT NULL,
+ STATE CHAR (2)         NOT NULL,
+ ACRES INTEGER          NOT NULL,
+ FEE   DECIMAL (5,2)    NOT NULL);
+")
+
+dbExecute(con, "
+INSERT INTO PRESERVE VALUES 
+(5,  'HASSAYAMPA RIVER',         'AZ', 660,   3.00),
+(3,  'DANCING PRAIRIE',          'MT', 680,   0.00),
+(7,  'MULESHOE RANCH',           'AZ', 49120, 0.00),
+(40, 'SOUTH FORK MADISON',       'MT', 121,   0.00),
+(14, 'MCELWAIN-OLSEN',           'MA', 66,    0.00),
+(13, 'TATKON',                   'MA', 40,    0.00),
+(9,  'DAVID H. SMITH',           'MA', 830,   0.00),
+(11, 'MIACOMET MOORS',           'MA', 4,     0.00),
+(12, 'MOUNT PLANTAIN',           'MA', 730,   0.00),
+(1,  'COMERTOWN PRAIRIE',        'MT', 1130,  0.00),
+(2,  'PINE BUTTE SWAMP',         'MT', 15000, 0.00),
+(80, 'RAMSEY CANYON',            'AZ', 380,   3.00),
+(10, 'HOFT FARM',                'MA', 90,    0.00),
+(6,  'PAPAGONIA-SONOITA CREEK',  'AZ', 1200,  3.00);
+")
+
+dbExecute(con, "
+CREATE TABLE EMPLOYEE
+(ENO    CHAR (4)       NOT NULL UNIQUE,
+ ENAME  VARCHAR(25)    NOT NULL,
+ SALARY DECIMAL(7,2)   NOT NULL,
+ DNO    INTEGER        NOT NULL);
+")
+
+dbExecute(con, "
+INSERT INTO EMPLOYEE VALUES 
+('1000', 'MOE',    2000.00, 20),
+('2000', 'LARRY',  2000.00, 10),
+('3000', 'CURLY',  3000.00, 20),
+('4000', 'SHEMP',   500.00, 40),
+('5000', 'JOE',     400.00, 10),
+('6000', 'GEORGE', 9000.00, 20);
+")
+```
+
+# Exercício 1
+Exiba a tabela inteira. Ordene o resultado pela coluna ACRES em ordem crescente.
+
+```{sql, connection=con}
+SELECT *
+FROM PRESERVE
+ORDER BY ACRES;
+```
+
+# Exercício 2
+Exiba o nome da reserva (PNAME) e a taxa de entrada (FEE) de cada reserva natural localizada em Montana. Ordene o resultado pelo nome da reserva em ordem decrescente.
+
+```{sql, connection=con}
+SELECT PNAME, FEE
+FROM PRESERVE
+WHERE STATE = 'MT'
+ORDER BY PNAME DESC;
+```
+
+# Exercício 3
+Exiba as colunas FEE e ACRES de todas as linhas da tabela. Ordene as linhas exibidas por ACRES dentro de FEE (FEE é o campo de ordenação principal, e ACRES é o campo de ordenação secundário).
+
+```{sql, connection=con}
+SELECT FEE, ACRES
+FROM PRESERVE
+ORDER BY FEE, ACRES;
+```
+
+# Exercício 4
+Suponha (irrealisticamente) que os valores de PNO sejam considerados confidenciais. Exiba o valor de PNAME para cada reserva natural localizada no Arizona. Apresente o resultado em ordem crescente de PNO, sem exibir os valores de PNO.
+
+```{sql, connection=con}
+SELECT PNAME
+FROM PRESERVE
+WHERE STATE = 'AZ'
+ORDER BY PNO;
+```
+
+# Exercício 5
+Exiba os valores de STATE, FEE e PNO para todas as reservas naturais que tenham mais de 100 acres. Ordene a tabela resultante com STATE decrescente, FEE decrescente e PNO crescente.
+
+```{sql, connection=con}
+SELECT STATE, FEE, PNO
+FROM PRESERVE
+WHERE ACRES > 100
+ORDER BY STATE DESC, FEE DESC, PNO;
+```
+
+# Exercício 6
+Exiba todas as linhas em que o valor de STATE seja maior ou igual à letra M.
+
+```{sql, connection=con}
+SELECT *
+FROM PRESERVE
+WHERE STATE >= 'M';
+```
+
+# Exercício 7
+Exiba todas as linhas em que o valor do nome da reserva (PNAME) seja menor que TATKON.
+
+```{sql, connection=con}
+SELECT *
+FROM PRESERVE
+WHERE PNAME < 'TATKON';
+```
+
+# Exercício 9
+Exiba a tabela EMPLOYEE inteira, ordenada pelo nome do funcionário em ordem crescente.
+
+```{sql, connection=con}
+SELECT *
+FROM EMPLOYEE
+ORDER BY ENAME;
+```
+
+# Exercício 10
+Exiba o nome e o salário de qualquer funcionário cujo salário seja superior a $ 2.000,00. Ordene o resultado pelo salário em ordem decrescente.
+
+```{sql, connection=con}
+SELECT ENAME, SALARY
+FROM EMPLOYEE
+WHERE SALARY > 2000
+ORDER BY SALARY DESC;
+```
+
+# Exercício 11
+Exiba o número do departamento (DNO), o número do funcionário (ENO) e o nome do funcionário (ENAME) de todos os funcionários. Ordene o resultado pelo número do funcionário (em ordem crescente) dentro do número do departamento (em ordem decrescente).
+
+```{sql, connection=con}
+SELECT DNO, ENO, ENAME
+FROM EMPLOYEE
+ORDER BY DNO DESC, ENO;
+```
+
+# Data e Hora de Compilação
+
+```{r}
+Sys.setenv(TZ = "America/Sao_Paulo")
+Sys.time()
+```
