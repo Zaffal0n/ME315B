@@ -1,0 +1,114 @@
+---
+title: "ME315 - Laboratório 02: Processamento de Bases de Dados em Lote"
+author: "João Augusto Zaffalon"
+format:
+  pdf:
+    toc: false
+    number-sections: false
+    colorlinks: true
+execute:
+  echo: true
+  warning: false
+  message: false
+---
+
+```{r setup, include=FALSE}
+library(dplyr)
+library(readr)
+library(ggplot2)
+library(ggcal)
+```
+
+# Questão 1
+Quais são as estatísticas suficientes para a determinação do percentual de voos atrasados na chegada (`ARRIVAL_DELAY > 10`)?
+
+**Resposta:** As estatísticas suficientes são o número total de voos com atraso superior a 10 minutos e o número total de voos. Com essas duas contagens parciais de cada lote, é possível calcular o percentual total no final.
+
+# Questão 2
+Crie uma função chamada `getStats` que, para um conjunto de dados, filtre as observações das Cias. Aéreas de interesse, remova valores faltantes, agrupe por dia, mês e cia. aérea, e retorne as estatísticas suficientes.
+
+```{r}
+getStats <- function(input, pos) {
+  input %>%
+    filter(AIRLINE %in% c("AA", "DL", "UA", "US")) %>%
+    filter(!is.na(AIRLINE), !is.na(ARRIVAL_DELAY), !is.na(YEAR), !is.na(MONTH), !is.na(DAY)) %>%
+    group_by(YEAR, MONTH, DAY, AIRLINE) %>%
+    summarise(
+      n_atraso = sum(ARRIVAL_DELAY > 10),
+      n_total = n(),
+      .groups = "drop"
+    )
+}
+```
+
+# Questão 3
+Utilize a função `readr::read_csv_chunked` para importar o arquivo `flights.csv.zip` em lotes de 100 mil registros, aplicando a função de callback `getStats`.
+
+```{r}
+cols_interesse <- cols_only(
+  YEAR = col_integer(),
+  MONTH = col_integer(),
+  DAY = col_integer(),
+  AIRLINE = col_character(),
+  ARRIVAL_DELAY = col_double()
+)
+
+estatisticas_lote <- read_csv_chunked(
+  file = "flights.csv.zip",
+  callback = DataFrameCallback$new(getStats),
+  chunk_size = 100000,
+  col_types = cols_interesse
+)
+```
+
+# Questão 4
+Crie uma função chamada `computeStats` que combine as estatísticas suficientes para compor a métrica final e retorne um tibble com as colunas Cia, Data e Perc.
+
+```{r}
+computeStats <- function(base) {
+  base %>%
+    group_by(YEAR, MONTH, DAY, AIRLINE) %>%
+    summarise(
+      total_atraso = sum(n_atraso),
+      total_voos = sum(n_total),
+      .groups = "drop"
+    ) %>%
+    mutate(
+      Data = as.Date(paste(YEAR, MONTH, DAY, sep = "-")),
+      Perc = total_atraso / total_voos
+    ) %>%
+    select(Cia = AIRLINE, Data, Perc)
+}
+
+stats_finais <- computeStats(estatisticas_lote)
+```
+
+# Questão 5
+Produza um mapa de calor em formato de calendário para cada Cia. Aérea utilizando o pacote `ggcal`.
+
+```{r}
+pal <- scale_fill_gradient(low = "#4575b4", high = "#d73027")
+
+baseCalendario <- function(stats, cia) {
+  sub <- stats %>% filter(Cia == cia)
+  # Correção aqui: removido x= e y=
+  ggcal(sub$Data, sub$Perc)
+}
+
+cAA <- baseCalendario(stats_finais, "AA")
+cDL <- baseCalendario(stats_finais, "DL")
+cUA <- baseCalendario(stats_finais, "UA")
+cUS <- baseCalendario(stats_finais, "US")
+
+cAA + pal + ggtitle("AA")
+cDL + pal + ggtitle("DL")
+cUA + pal + ggtitle("UA")
+cUS + pal + ggtitle("US")
+```
+
+# Data e Hora de Compilação
+
+```{r}
+Sys.setenv(TZ = "America/Sao_Paulo")
+Sys.time()
+```
