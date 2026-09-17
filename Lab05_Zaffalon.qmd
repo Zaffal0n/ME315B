@@ -1,0 +1,53 @@
+---
+title: "Lab 05"
+author: "João Augusto Zaffalon"
+format: pdf
+editor: visual
+---
+
+```{r}
+#| message: false
+#| warning: false
+#Lendo os pacotes
+library(tidyverse)
+library(ggplot2)
+library(leaflet)
+library(ggcal)
+```
+
+
+```{r}
+#Criando a Funcao com os argumentos tail_number, arquivo
+
+analisa_aeronave <- function(tail_number, arquivo) {
+  #Lendo os dados em chunks e ja aplicando o filtro de acordo com o tail_number
+  dados <- read_csv_chunked(
+    file = arquivo,
+    callback = DataFrameCallback$new(\(chunk, pos) {
+      chunk |> filter(TAIL_NUMBER == tail_number)
+    }),
+    chunk_size = 1e5,
+    show_col_types = FALSE
+  )
+  
+  #Obtendo os dados no numero da cauda
+  tail_data <- dados |>
+    #Ordenando por data e hora
+    arrange(YEAR, MONTH, DAY, DEPARTURE_TIME) |>
+    #Juntando DAY, MONTH e YEAR em uma coluna unida chamada DATA no formato DD/MM/AAAA
+    mutate(DATA = sprintf("%02d/%02d/%04d", DAY, MONTH, YEAR), .before = YEAR)
+  
+  #Retornando o valor esperado da funcao
+  return(tail_data)
+}
+```
+
+```{r}
+#Teste com o voo do exemplo N431WN
+analisa_aeronave("N431WN", "C:/Users/joaoz/Desktop/Lab05/flights/flights.csv")
+```
+
+```{r}
+Sys.setenv(TZ = "America/Sao_Paulo")
+Sys.time()
+```
