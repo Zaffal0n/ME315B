@@ -1,0 +1,206 @@
+---
+title: "Lab 07"
+author: "João Augusto Zaffalon"
+format: pdf
+editor: visual
+---
+
+
+
+1. Baixe o arquivo uwmadison.sqlite3. Conecte-se a ele usando o pacote RSQLite, armazenando a conexão em uma variável conn.
+```{r}
+library(RSQLite)
+library(DBI)
+
+conn <- dbConnect(RSQLite::SQLite(), "C:/Users/joaoz/Desktop/Lab07/uwmadison.sqlite3")
+
+dbListTables(conn)
+dbListFields(conn, "teachings")
+```
+
+2. Quem são e quantos são os professores que lecionaram disciplinas cujo tópico era estatística (subjects.abbreviation='STAT');
+```{r}
+dbGetQuery(conn, "SELECT DISTINCT 
+    instructors.id,
+    instructors.name
+FROM subjects
+JOIN subject_memberships 
+    ON subjects.code = subject_memberships.subject_code
+JOIN course_offerings 
+    ON subject_memberships.course_offering_uuid = course_offerings.uuid
+JOIN sections 
+    ON course_offerings.uuid = sections.course_offering_uuid
+JOIN teachings 
+    ON sections.uuid = teachings.section_uuid
+JOIN instructors 
+    ON teachings.instructor_id = instructors.id
+WHERE subjects.abbreviation = 'STAT'
+ORDER BY instructors.name;")
+
+dbGetQuery(conn, "SELECT COUNT(DISTINCT 
+    instructors.id) AS total_teachers
+FROM subjects
+JOIN subject_memberships 
+    ON subjects.code = subject_memberships.subject_code
+JOIN course_offerings 
+    ON subject_memberships.course_offering_uuid = course_offerings.uuid
+JOIN sections 
+    ON course_offerings.uuid = sections.course_offering_uuid
+JOIN teachings 
+    ON sections.uuid = teachings.section_uuid
+JOIN instructors 
+    ON teachings.instructor_id = instructors.id
+WHERE subjects.abbreviation = 'STAT'
+ORDER BY instructors.name;")
+```
+
+
+3. O GPA americano é definido numa escala de 0 a 4, em que A = 4, AB = 3.5, B = 3, BC = 2.5, C = 2, D = 1 e F = 0. Determinando a nota média de cada oferecimento pela ponderação da quantidade de alunos em cada extrato com os valores numéricos de cada conceito, indique (no que se referente a disciplinas no assunto de estatística):
+
+- Quem é o professor mais difícil?
+```{r}
+dbGetQuery(conn, "SELECT 
+    instructors.name,
+    SUM(
+        gd.a_count * 4.0 + 
+        gd.ab_count * 3.5 + 
+        gd.b_count * 3.0 + 
+        gd.bc_count * 2.5 + 
+        gd.c_count * 2.0 + 
+        gd.d_count * 1.0 + 
+        gd.f_count * 0.0
+    ) * 1.0 / 
+    SUM(gd.a_count + gd.ab_count + gd.b_count + gd.bc_count + gd.c_count + gd.d_count + gd.f_count) AS media_gpa,
+    SUM(gd.a_count + gd.ab_count + gd.b_count + gd.bc_count + gd.c_count + gd.d_count + gd.f_count) AS total_alunos
+FROM subjects s
+JOIN subject_memberships sm 
+    ON s.code = sm.subject_code
+JOIN course_offerings co 
+    ON sm.course_offering_uuid = co.uuid
+JOIN sections sec 
+    ON co.uuid = sec.course_offering_uuid
+JOIN teachings t 
+    ON sec.uuid = t.section_uuid
+JOIN instructors 
+    ON t.instructor_id = instructors.id
+JOIN grade_distributions gd 
+    ON sec.course_offering_uuid = gd.course_offering_uuid 
+   AND sec.number = gd.section_number
+WHERE s.abbreviation = 'STAT'
+GROUP BY instructors.id, instructors.name
+HAVING total_alunos > 0
+ORDER BY media_gpa ASC
+LIMIT 1")
+```
+
+- Quem é o professor mais fácil?
+```{r}
+dbGetQuery(conn, "SELECT 
+    instructors.name,
+    SUM(
+        gd.a_count * 4.0 + 
+        gd.ab_count * 3.5 + 
+        gd.b_count * 3.0 + 
+        gd.bc_count * 2.5 + 
+        gd.c_count * 2.0 + 
+        gd.d_count * 1.0 + 
+        gd.f_count * 0.0
+    ) * 1.0 / 
+    SUM(gd.a_count + gd.ab_count + gd.b_count + gd.bc_count + gd.c_count + gd.d_count + gd.f_count) AS media_gpa,
+    SUM(gd.a_count + gd.ab_count + gd.b_count + gd.bc_count + gd.c_count + gd.d_count + gd.f_count) AS total_alunos
+FROM subjects s
+JOIN subject_memberships sm 
+    ON s.code = sm.subject_code
+JOIN course_offerings co 
+    ON sm.course_offering_uuid = co.uuid
+JOIN sections sec 
+    ON co.uuid = sec.course_offering_uuid
+JOIN teachings t 
+    ON sec.uuid = t.section_uuid
+JOIN instructors 
+    ON t.instructor_id = instructors.id
+JOIN grade_distributions gd 
+    ON sec.course_offering_uuid = gd.course_offering_uuid 
+   AND sec.number = gd.section_number
+WHERE s.abbreviation = 'STAT'
+GROUP BY instructors.id, instructors.name
+HAVING total_alunos > 0
+ORDER BY media_gpa DESC
+LIMIT 1")
+```
+
+- Qual é a disciplina mais difícil?
+```{r}
+dbGetQuery(conn, "SELECT 
+    c.name AS disciplina,
+    c.number AS codigo_disciplina,
+    SUM(
+        gd.a_count * 4.0 + 
+        gd.ab_count * 3.5 + 
+        gd.b_count * 3.0 + 
+        gd.bc_count * 2.5 + 
+        gd.c_count * 2.0 + 
+        gd.d_count * 1.0 + 
+        gd.f_count * 0.0
+    ) * 1.0 / 
+    SUM(gd.a_count + gd.ab_count + gd.b_count + gd.bc_count + gd.c_count + gd.d_count + gd.f_count) AS media_gpa,
+    SUM(gd.a_count + gd.ab_count + gd.b_count + gd.bc_count + gd.c_count + gd.d_count + gd.f_count) AS total_alunos
+FROM subjects s
+JOIN subject_memberships sm 
+    ON s.code = sm.subject_code
+JOIN course_offerings co 
+    ON sm.course_offering_uuid = co.uuid
+JOIN courses c 
+    ON co.course_uuid = c.uuid
+JOIN grade_distributions gd 
+    ON co.uuid = gd.course_offering_uuid
+WHERE s.abbreviation = 'STAT'
+GROUP BY c.uuid, c.name, c.number
+HAVING total_alunos > 0
+ORDER BY media_gpa ASC
+LIMIT 1")
+```
+
+- Qual é a disciplina mais fácil?
+```{r}
+dbGetQuery(conn, "SELECT 
+    c.name AS disciplina,
+    c.number AS codigo_disciplina,
+    SUM(
+        gd.a_count * 4.0 + 
+        gd.ab_count * 3.5 + 
+        gd.b_count * 3.0 + 
+        gd.bc_count * 2.5 + 
+        gd.c_count * 2.0 + 
+        gd.d_count * 1.0 + 
+        gd.f_count * 0.0
+    ) * 1.0 / 
+    SUM(gd.a_count + gd.ab_count + gd.b_count + gd.bc_count + gd.c_count + gd.d_count + gd.f_count) AS media_gpa,
+    SUM(gd.a_count + gd.ab_count + gd.b_count + gd.bc_count + gd.c_count + gd.d_count + gd.f_count) AS total_alunos
+FROM subjects s
+JOIN subject_memberships sm 
+    ON s.code = sm.subject_code
+JOIN course_offerings co 
+    ON sm.course_offering_uuid = co.uuid
+JOIN courses c 
+    ON co.course_uuid = c.uuid
+JOIN grade_distributions gd 
+    ON co.uuid = gd.course_offering_uuid
+WHERE s.abbreviation = 'STAT'
+GROUP BY c.uuid, c.name, c.number
+HAVING total_alunos > 0
+ORDER BY media_gpa DESC
+LIMIT 1")
+```
+
+
+4. Desconecte do banco de dados.
+```{r}
+dbDisconnect(conn)
+```
+
+
+```{r}
+Sys.setenv(TZ = "America/Sao_Paulo")
+Sys.time()
+```
